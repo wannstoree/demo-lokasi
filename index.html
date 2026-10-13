@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Berbagi Lokasi</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f1f5f9;
+  color: #202124;
+}
+
+header {
+  background: white;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px #0001;
+}
+
+.logo {
+  font-size: 30px;
+}
+
+header h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+header small {
+  color: #64748b;
+}
+
+main {
+  padding: 20px;
+  max-width: 480px;
+  margin: auto;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 3px 12px #0000000b;
+}
+
+iframe {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border: 0;
+  border-radius: 14px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: #1a73e8;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.secondary {
+  background: #e8f0fe;
+  color: #1967d2;
+}
+
+#hasil {
+  margin-top: 16px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">📍</div>
+  <div>
+    <h2>Berbagi Lokasi</h2>
+    <small>Demo lokasi GPS</small>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+
+    <iframe
+      id="peta"
+      title="Peta lokasi"
+      loading="lazy"
+      src="https://maps.google.com/maps?q=Semarang&z=12&output=embed">
+    </iframe>
+
+    <h3>Lokasi perangkat</h3>
+
+    <p>
+      Tekan tombol untuk membagikan lokasi
+      perangkat setelah memberikan izin.
+    </p>
+
+    <button onclick="ambilLokasi()">
+      📍 Bagikan Lokasi Saya
+    </button>
+
+    <div id="hasil" aria-live="polite">
+      Lokasi belum diambil.
+    </div>
+
+    <button
+      class="secondary"
+      id="buka"
+      hidden
+      onclick="bukaPeta()">
+      Buka di Google Maps
+    </button>
+
+  </div>
+
+  <div class="card">
+    <h3>Informasi lokasi</h3>
+    <p class="note">
+      Koordinat ditampilkan di halaman ini.
+      Demo ini tidak mengirim koordinat ke server.
+    </p>
+  </div>
+</main>
+
+<script>
+let koordinat = null;
+
+function ambilLokasi() {
+  const hasil = document.getElementById("hasil");
+
+  if (!navigator.geolocation) {
+    hasil.textContent =
+      "Browser tidak mendukung fitur lokasi.";
+    return;
+  }
+
+  hasil.textContent = "Menunggu izin lokasi...";
+
+  navigator.geolocation.getCurrentPosition(
+    function(posisi) {
+      const lat = posisi.coords.latitude;
+      const lon = posisi.coords.longitude;
+
+      koordinat = { lat, lon };
+
+      hasil.textContent =
+        "Latitude: " + lat.toFixed(6) +
+        "\nLongitude: " + lon.toFixed(6);
+
+      document.getElementById("peta").src =
+        "https://maps.google.com/maps?q=" +
+        lat + "," + lon + "&z=16&output=embed";
+
+      document.getElementById("buka").hidden = false;
+    },
+
+    function(error) {
+      if (error.code === 1) {
+        hasil.textContent =
+          "Izin lokasi ditolak. Periksa izin browser.";
+      } else if (error.code === 2) {
+        hasil.textContent =
+          "Lokasi tidak tersedia. Periksa GPS.";
+      } else {
+        hasil.textContent =
+          "Waktu permintaan habis. Coba lagi.";
+      }
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
+    }
+  );
+}
+
+function bukaPeta() {
+  if (!koordinat) return;
+
+  const url =
+    "https://www.google.com/maps?q=" +
+    koordinat.lat + "," + koordinat.lon;
+
+  window.open(url, "_blank", "noopener");
+}
+</script>
+
+</body>
+</html>
