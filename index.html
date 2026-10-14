@@ -181,11 +181,13 @@
           }
         },
         function (error) {
-          status.textContent =
-            error.code === 1
-              ? "Izin lokasi ditolak."
-              : "Lokasi tidak tersedia. Periksa GPS.";
+  status.textContent =
+    "Kode error: " + error.code +
+    " — " + error.message;
 
+  busy = false;
+  shareButton.disabled = false;
+}
           busy = false;
           shareButton.disabled = false;
         },
