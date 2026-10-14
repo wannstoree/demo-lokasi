@@ -5,7 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bagikan Lokasi</title>
-
   <link rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
@@ -16,18 +15,17 @@
       margin: 0;
       font-family: Arial, sans-serif;
       color: #202124;
-      background: #fff;
     }
 
     header {
-      padding: 16px;
+      padding: 14px;
       background: white;
       box-shadow: 0 2px 5px #0002;
     }
 
     .brand {
       font-size: 22px;
-      color: #1a73e8;
+      color: #4285f4;
       font-weight: bold;
       margin-bottom: 12px;
     }
@@ -37,42 +35,24 @@
       padding: 13px;
       border: 1px solid #ddd;
       border-radius: 25px;
-      font-size: 15px;
     }
 
     #map {
       width: 100%;
-      height: 45vh;
+      height: 50vh;
       min-height: 260px;
     }
 
-    .panel {
-      padding: 18px;
-    }
-
-    .notice {
-      background: #f1f5f9;
-      padding: 14px;
-      border-radius: 12px;
-      line-height: 1.6;
-      font-size: 14px;
-    }
+    .panel { padding: 18px; }
 
     button {
-      width: 100%;
-      padding: 14px;
+      padding: 13px 18px;
       background: #1a73e8;
       color: white;
       border: 0;
       border-radius: 24px;
       font-size: 15px;
       cursor: pointer;
-      margin-top: 10px;
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: wait;
     }
 
     #status, #coords {
@@ -86,48 +66,36 @@
 
 <body>
   <header>
-    <div class="brand">Bagikan Lokasi</div>
+    <div class="brand">Maps</div>
     <input id="search" placeholder="Cari tempat...">
   </header>
 
   <div id="map"></div>
 
   <section class="panel">
-    <h3>Berbagi lokasi GPS</h3>
+    <h3>Bagikan Lokasi GPS</h3>
 
-    <div class="notice">
+    <p>
       Izin diperlukan untuk mengakses Google Maps.
-      <p>
-        <strong>Penerima email:</strong>
-        <span id="recipientDisplay"></span>
-      </p>
-    </div>
+    </p>
 
-    <p id="status">Menunggu persetujuan kamu.</p>
+    <p id="status">Menunggu persetujuan.</p>
     <p id="coords"></p>
 
-    <button id="consentButton">
-      Setuju dan bagikan lokasi
-    </button>
+    <button id="shareButton">Setuju dan Bagikan Lokasi</button>
   </section>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
   <script>
-    // Konfigurasi EmailJS
     const EMAILJS_PUBLIC_KEY = "jzuOyCTWQn_58ncCd";
     const EMAILJS_SERVICE_ID = "service_873xl3f";
     const EMAILJS_TEMPLATE_ID = "template_g80wg7l";
 
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 
-    emailjs.init({
-      publicKey: EMAILJS_PUBLIC_KEY
-    });
-
-    const map = L.map("map").setView(
-      [-6.9932, 110.4203], 13
-    );
+    const map = L.map("map").setView([-6.9932, 110.4203], 13);
 
     L.tileLayer(
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -139,45 +107,22 @@
 
     const status = document.getElementById("status");
     const coords = document.getElementById("coords");
-    const consentButton =
-      document.getElementById("consentButton");
-
-    document.getElementById("recipientDisplay")
-      .textContent = RECIPIENT_EMAIL;
+    const shareButton = document.getElementById("shareButton");
 
     let marker = null;
-    let sending = false;
+    let busy = false;
 
-    consentButton.addEventListener("click", function () {
-      if (sending) return;
-
-      if (
-        !RECIPIENT_EMAIL ||
-        RECIPIENT_EMAIL === "GANTI_DENGAN_EMAIL_PENERIMA"
-      ) {
-        status.textContent =
-          "Atur alamat email penerima terlebih dahulu.";
-        return;
-      }
-
-      const approved = confirm(
-        "Lokasi GPS perangkat ini akan dikirim ke:\n" +
-        RECIPIENT_EMAIL +
-        "\n\nLanjutkan?"
-      );
-
-      if (!approved) return;
+    shareButton.addEventListener("click", function () {
+      if (busy) return;
 
       if (!navigator.geolocation) {
-        status.textContent =
-          "Browser ini tidak mendukung geolokasi.";
+        status.textContent = "Browser tidak mendukung GPS.";
         return;
       }
 
-      sending = true;
-      consentButton.disabled = true;
-      status.textContent =
-        "Meminta izin lokasi dari browser...";
+      busy = true;
+      shareButton.disabled = true;
+      status.textContent = "Meminta izin lokasi...";
 
       navigator.geolocation.getCurrentPosition(
         async function (position) {
@@ -197,8 +142,19 @@
             "Latitude: " + lat.toFixed(6) +
             "\nLongitude: " + lng.toFixed(6);
 
-          status.textContent =
-            "Lokasi ditemukan. Mengirim email...";
+          const approved = confirm(
+            "Kirim koordinat GPS ini melalui email " +
+            "ke penerima yang telah dikonfigurasi?"
+          );
+
+          if (!approved) {
+            status.textContent = "Pengiriman dibatalkan.";
+            busy = false;
+            shareButton.disabled = false;
+            return;
+          }
+
+          status.textContent = "Mengirim email...";
 
           try {
             await emailjs.send(
@@ -214,29 +170,25 @@
               }
             );
 
-            status.textContent =
-              "Email berhasil dikirim.";
+            status.textContent = "Email berhasil dikirim.";
           } catch (error) {
             console.error("EmailJS error:", error);
-
             status.textContent =
               "Email gagal dikirim. Periksa konfigurasi EmailJS.";
           } finally {
-            sending = false;
-            consentButton.disabled = false;
+            busy = false;
+            shareButton.disabled = false;
           }
         },
-
         function (error) {
           status.textContent =
             error.code === 1
-              ? "Izin lokasi ditolak. Tidak ada koordinat yang dikirim."
-              : "Lokasi tidak tersedia. Periksa GPS dan izin browser.";
+              ? "Izin lokasi ditolak."
+              : "Lokasi tidak tersedia. Periksa GPS.";
 
-          sending = false;
-          consentButton.disabled = false;
+          busy = false;
+          shareButton.disabled = false;
         },
-
         {
           enableHighAccuracy: true,
           timeout: 20000,
@@ -248,10 +200,7 @@
     document.getElementById("search").addEventListener(
       "keydown",
       async function (event) {
-        if (
-          event.key !== "Enter" ||
-          !this.value.trim()
-        ) return;
+        if (event.key !== "Enter" || !this.value.trim()) return;
 
         try {
           const response = await fetch(
@@ -262,16 +211,12 @@
           const data = await response.json();
 
           if (data.length) {
-            map.setView(
-              [+data[0].lat, +data[0].lon], 16
-            );
+            map.setView([+data[0].lat, +data[0].lon], 16);
           } else {
-            status.textContent =
-              "Tempat tidak ditemukan.";
+            status.textContent = "Tempat tidak ditemukan.";
           }
-        } catch (error) {
-          status.textContent =
-            "Pencarian gagal. Coba lagi.";
+        } catch {
+          status.textContent = "Pencarian gagal. Coba lagi.";
         }
       }
     );
