@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Maps</title>
+  <title>Bagikan Lokasi</title>
 
   <link rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -15,14 +15,13 @@
     body {
       margin: 0;
       font-family: Arial, sans-serif;
+      color: #202124;
     }
 
     header {
       padding: 14px;
       background: white;
       box-shadow: 0 2px 5px #0002;
-      position: relative;
-      z-index: 1000;
     }
 
     .brand {
@@ -34,28 +33,34 @@
 
     input {
       width: 100%;
-      padding: 13px 16px;
+      padding: 13px;
       border: 1px solid #ddd;
       border-radius: 25px;
-      font-size: 15px;
     }
 
     #map {
       width: 100%;
-      height: calc(100vh - 80px);
+      height: 55vh;
     }
 
-    #status {
-      position: absolute;
-      z-index: 1000;
-      bottom: 18px;
-      left: 12px;
-      right: 12px;
-      background: white;
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 2px 8px #0002;
-      font-size: 13px;
+    .panel {
+      padding: 18px;
+    }
+
+    button {
+      padding: 13px 18px;
+      background: #1a73e8;
+      color: white;
+      border: 0;
+      border-radius: 24px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    #status, #coords {
+      font-size: 14px;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
     }
   </style>
 </head>
@@ -63,38 +68,58 @@
 <body>
   <header>
     <div class="brand">Maps</div>
-    <input id="search" placeholder="Cari tempat di peta...">
+    <input id="search" placeholder="Cari tempat...">
   </header>
 
   <div id="map"></div>
-  <div id="status">Meminta izin lokasi perangkat...</div>
+
+  <section class="panel">
+    <p id="status">Memeriksa lokasi perangkat...</p>
+    <p id="coords"></p>
+    <button id="shareButton" hidden>Bagikan koordinat melalui email</button>
+  </section>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
   <script>
-    const map = L.map('map').setView([-6.9932, 110.4203], 13);
+    const EMAILJS_PUBLIC_KEY = "JzuOyCTWQn_58ncCd";
+    const EMAILJS_SERVICE_ID = "service_873xl3f";
+    const EMAILJS_TEMPLATE_ID = "template_g80wg71";
+
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+
+    const map = L.map("map").setView([-6.9932, 110.4203], 13);
 
     L.tileLayer(
-      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
         maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
+        attribution: "&copy; OpenStreetMap contributors"
       }
     ).addTo(map);
 
+    const status = document.getElementById("status");
+    const coords = document.getElementById("coords");
+    const shareButton = document.getElementById("shareButton");
+
     let marker = null;
-    const status = document.getElementById('status');
+    let currentLocation = null;
 
     function getLocation() {
       if (!navigator.geolocation) {
-        status.textContent = 'Browser tidak mendukung GPS.';
+        status.textContent = "Browser tidak mendukung GPS.";
         return;
       }
 
+      status.textContent = "Meminta izin lokasi perangkat...";
+
       navigator.geolocation.getCurrentPosition(
-        function(pos) {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          currentLocation = { lat, lng };
 
           map.setView([lat, lng], 17);
 
@@ -102,18 +127,23 @@
 
           marker = L.marker([lat, lng])
             .addTo(map)
-            .bindPopup('Lokasi perangkat ini')
+            .bindPopup("Lokasi perangkat ini")
             .openPopup();
 
+          coords.textContent =
+            "Latitude: " + lat.toFixed(6) +
+            "\nLongitude: " + lng.toFixed(6);
+
           status.textContent =
-            'Latitude: ' + lat.toFixed(6) +
-            ' | Longitude: ' + lng.toFixed(6);
+            "Lokasi ditemukan. Pilih tombol di bawah jika ingin membagikannya melalui email.";
+
+          shareButton.hidden = false;
         },
-        function(err) {
+        function(error) {
           status.textContent =
-            err.code === 1
-              ? 'Izin lokasi ditolak.'
-              : 'Lokasi tidak tersedia. Periksa GPS dan izin browser.';
+            error.code === 1
+              ? "Izin lokasi ditolak. Periksa pengaturan browser."
+              : "Lokasi tidak tersedia. Aktifkan GPS dan coba lagi.";
         },
         {
           enableHighAccuracy: true,
@@ -123,28 +153,65 @@
       );
     }
 
-    window.addEventListener('load', getLocation);
+    shareButton.addEventListener("click", async function() {
+      if (!currentLocation) return;
 
-    document.getElementById('search').addEventListener(
-      'keydown', async function(e) {
-        if (e.key !== 'Enter' || !this.value.trim()) return;
+      const approved = confirm(
+        "Koordinat GPS Anda akan dikirim ke alamat email penerima " +
+        "yang telah dikonfigurasi. Lanjutkan?"
+      );
+
+      if (!approved) return;
+
+      shareButton.disabled = true;
+      status.textContent = "Mengirim email...";
+
+      try {
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            latitude: currentLocation.lat.toFixed(6),
+            longitude: currentLocation.lng.toFixed(6),
+            time: new Date().toLocaleString("id-ID"),
+            maps_link:
+              "https://www.google.com/maps?q=" +
+              currentLocation.lat + "," +
+              currentLocation.lng
+          }
+        );
+
+        status.textContent = "Email berhasil dikirim.";
+      } catch (error) {
+        status.textContent =
+          "Email gagal dikirim. Periksa konfigurasi EmailJS.";
+      } finally {
+        shareButton.disabled = false;
+      }
+    });
+
+    document.getElementById("search").addEventListener(
+      "keydown", async function(event) {
+        if (event.key !== "Enter" || !this.value.trim()) return;
 
         try {
-          const url =
-            'https://nominatim.openstreetmap.org/search?format=json&limit=1&q='
-            + encodeURIComponent(this.value.trim());
+          const response = await fetch(
+            "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" +
+            encodeURIComponent(this.value.trim())
+          );
 
-          const response = await fetch(url);
           const data = await response.json();
 
           if (data.length) {
             map.setView([+data[0].lat, +data[0].lon], 16);
           }
         } catch {
-          status.textContent = 'Pencarian gagal. Coba lagi.';
+          status.textContent = "Pencarian gagal. Coba lagi.";
         }
       }
     );
+
+    window.addEventListener("load", getLocation);
   </script>
 </body>
 </html>
